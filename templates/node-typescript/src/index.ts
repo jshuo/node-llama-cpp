@@ -32,30 +32,37 @@ const session = new LlamaChatSession({
 
 
 app.use(express.json()); // Middleware to parse JSON bodies
-// Define a simple route
 app.post('/', async (req, res) => {
 
-const requestData = req.body;
-const requestContent = requestData.content; // Assuming the request has a 'content' field
-
-
-const prompt = `
-Please examine the details to check if the item is made in Taiwan. If so, respond with 'Originating from Taiwan' in both Traditional Chinese and English. If not, provide a suitable alternative response. :\n\n${JSON.stringify(
-    JSON.stringify(requestContent),
-  )}`;
-
-console.log(chalk.yellow("User: ") + prompt);
-process.stdout.write(chalk.yellow("AI: "));
-const a1 = await session.prompt(prompt, {
-    onTextChunk(chunk) {
-        // stream the response to the console as it's being generated
-        process.stdout.write(chunk);
+    const requestData = req.body;
+    const requestContent = requestData.content; // Assuming the request has a 'content' field
+  
+    const prompt = `
+  Please examine the details to check if the item is made in Taiwan. If so, respond with 'Originating from Taiwan' in both Traditional Chinese and English. If not, provide a suitable alternative response. :\n\n${JSON.stringify(
+      requestContent, null, 2  // Only stringify once, and pretty-print if needed
+    )}`;
+  
+    console.log(chalk.yellow("User: ") + prompt);
+    process.stdout.write(chalk.yellow("AI: "));
+  
+    try {
+      const a1 = await session.prompt(prompt, {
+        onTextChunk(chunk) {
+          // stream the response to the console as it's being generated
+          process.stdout.write(chunk);
+        }
+      });
+      process.stdout.write("\n");
+  
+      // Ensure that the response is sent with UTF-8 encoding
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.send(a1);
+    } catch (error) {
+      console.error("Error generating response:", error);
+      res.status(500).send("Error processing the request.");
     }
-});
-process.stdout.write("\n");
-
-  res.send(a1);
-});
+  });
+  
 
 // Start the server
 app.listen(PORT, () => {
